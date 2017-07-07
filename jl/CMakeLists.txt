@@ -10,6 +10,7 @@ find_package(catkin REQUIRED COMPONENTS
 	message_filters
 	std_msgs
 	geometry_msgs
+	mavros_msgs
 	keyboard
 	message_generation
 	serial
@@ -86,7 +87,7 @@ generate_messages(
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES jl
-#  CATKIN_DEPENDS other_catkin_pkg
+  CATKIN_DEPENDS message_runtime
 #  DEPENDS system_lib
 )
 
@@ -107,6 +108,7 @@ include_directories(include ${catkin_INCLUDE_DIRS})
 add_executable(sync_cam_data src/sync_camera_data.cpp)
 add_executable(generate_arm_tf src/generate_arm_tf.cpp)
 add_executable(control_ft_hexa src/ref_contr_ati_ft_sensor.cpp)
+add_executable(optitrack_hex src/generate_hex_ref.cpp)
 
 
 ## Add cmake target dependencies of the executable/library
@@ -117,6 +119,7 @@ add_executable(control_ft_hexa src/ref_contr_ati_ft_sensor.cpp)
 target_link_libraries(sync_cam_data ${catkin_LIBRARIES})
 target_link_libraries(generate_arm_tf ${catkin_LIBRARIES})
 target_link_libraries(control_ft_hexa ${catkin_LIBRARIES})
+target_link_libraries(optitrack_hex ${catkin_LIBRARIES})
 
 
 #############
