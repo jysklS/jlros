@@ -1,0 +1,6 @@
+roslaunch apm.launch
+rosrun mavros mavparam set SYSID_MYGCS 1
+rosrun mavros mavsys rate --all 30
+rosrun mavros mavsafety arm
+
+rosrun mavros mavsafety disarm
