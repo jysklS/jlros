@@ -55,17 +55,17 @@
 #define control_d2 0.25f
 
 // PID gains for throttle edits
-#define kp_th 0.1f//0.15f
-#define ki_th 0.03f//0.04f
-#define kd_th 0.2f//0.2f
+#define kp_th 0.15f//0.15f
+#define ki_th 0.04f//0.04f
+#define kd_th 0.3f//0.2f
 
 #define kp_xy 0.75f//0.15f
 #define ki_xy 0.07f//0.1f
 #define kd_xy 1.5f//0.2f
 
-#define kp_ya 0.1f//0.15f
-#define ki_ya 0.005f//0.04f
-#define kd_ya 0.2f//0.2f
+#define kp_ya 0.05f//0.15f
+#define ki_ya 0.0025f//0.04f
+#define kd_ya 0.1f//0.2f
 
 
 //////////////////////
@@ -368,7 +368,7 @@ void Hex::opti_cb(const geometry_msgs::PoseStampedConstPtr& pos_fb){
 }
 
 void Hex::ref_cb(const geometry_msgs::PoseStampedConstPtr& ref_fb){
-	double qx = ref_fb -> pose.orientation.x;
+	/*double qx = ref_fb -> pose.orientation.x;
 	double qy = ref_fb -> pose.orientation.y;
 	double qz = ref_fb -> pose.orientation.z;
 	double qw = ref_fb -> pose.orientation.w;
@@ -378,11 +378,11 @@ void Hex::ref_cb(const geometry_msgs::PoseStampedConstPtr& ref_fb){
 	ref_in[2] = ref_fb -> pose.position.z;
 	ref_in[3] = Hex::Quaternion2Roll(qx,qy,qz,qw);
 	ref_in[4] = Hex::Quaternion2Pitch(qx,qy,qz,qw);
-	ref_in[5] = Hex::Quaternion2Yaw(qx,qy,qz,qw);
+	ref_in[5] = Hex::Quaternion2Yaw(qx,qy,qz,qw);*/
 }
 
 void Hex::mavros_cb(const mavros_msgs::RCInConstPtr& rc_fb){
-	/*rc0_msg.data = rc_fb -> channels[0];
+	rc0_msg.data = rc_fb -> channels[0];
 	rc1_msg.data = rc_fb -> channels[1];
 	rc2_msg.data = rc_fb -> channels[2];
 	rc3_msg.data = rc_fb -> channels[3];
@@ -390,7 +390,7 @@ void Hex::mavros_cb(const mavros_msgs::RCInConstPtr& rc_fb){
 	rc0_pub.publish(rc0_msg);
 	rc1_pub.publish(rc1_msg);
 	rc2_pub.publish(rc2_msg);
-	rc3_pub.publish(rc3_msg);*/
+	rc3_pub.publish(rc3_msg);
 }
 
 double Hex::Quaternion2Roll(double qx, double qy, double qz, double qw){
