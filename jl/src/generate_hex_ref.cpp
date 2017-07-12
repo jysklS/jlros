@@ -22,7 +22,7 @@
 #define RATE_LOOP 0.025			// timer callback loop rate
 #define TAKEOFF_HEIGHT 1.0f		// Desired Take off height
 #define LANDING_HEIGHT 0.0f		// Desired Landing height
-#define GROUNDED_HEIGHT 0.1f    // Desired Landed Height
+#define GROUNDED_HEIGHT 0.3f    // Desired Landed Height
 #define HOME_X 0.0f				// desired home x
 #define HOME_Y 0.0f				// desired home y
 #define HOME_Z 1.0f				// desired home z
@@ -48,24 +48,24 @@
 
 // reference filter values for smooth reference transitions
 #define takeoff_d1 1.0f
-#define takeoff_d2 0.25f
+#define takeoff_d2 30.0f
 #define landing_d1 1.0f
-#define landing_d2 0.25f
+#define landing_d2 0.5f
 #define control_d1 1.0f
 #define control_d2 0.25f
 
 // PID gains for throttle edits
 #define kp_th 0.1f//0.15f
-#define ki_th 0.07f//0.04f
-#define kd_th 0.15f//0.2f
+#define ki_th 0.03f//0.04f
+#define kd_th 0.2f//0.2f
 
-#define kp_xy 0.15f//0.15f
-#define ki_xy 0.03f//0.1f
-#define kd_xy 0.22f//0.2f
+#define kp_xy 0.75f//0.15f
+#define ki_xy 0.07f//0.1f
+#define kd_xy 1.5f//0.2f
 
-#define kp_ya 0.2f//0.15f
-#define ki_ya 0.03f//0.04f
-#define kd_ya 0.33f//0.2f
+#define kp_ya 0.1f//0.15f
+#define ki_ya 0.005f//0.04f
+#define kd_ya 0.2f//0.2f
 
 
 //////////////////////
