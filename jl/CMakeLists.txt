@@ -53,6 +53,9 @@ find_package(catkin REQUIRED COMPONENTS
 add_message_files(
   FILES
   jointAngles.msg
+  beacon_pos_a.msg
+  hedge_pos.msg
+  hedge_pos_a.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -109,6 +112,7 @@ add_executable(sync_cam_data src/sync_camera_data.cpp)
 add_executable(generate_arm_tf src/generate_arm_tf.cpp)
 add_executable(control_ft_hexa src/ref_contr_ati_ft_sensor.cpp)
 add_executable(optitrack_hex src/generate_hex_ref.cpp)
+add_executable(marvel_opti_calib src/marvel_opti_calib.cpp)
 
 
 ## Add cmake target dependencies of the executable/library
@@ -120,6 +124,7 @@ target_link_libraries(sync_cam_data ${catkin_LIBRARIES})
 target_link_libraries(generate_arm_tf ${catkin_LIBRARIES})
 target_link_libraries(control_ft_hexa ${catkin_LIBRARIES})
 target_link_libraries(optitrack_hex ${catkin_LIBRARIES})
+target_link_libraries(marvel_opti_calib ${catkin_LIBRARIES})
 
 
 #############
