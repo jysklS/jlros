@@ -34,6 +34,7 @@
 #define CONTROLLED 3			// allow reference changes
 #define LANDING 4				// from current x,y,psi, return to ground
 #define LANDED 5
+#define SAFETY_KILL 6
 
 // data collection mode
 #define OUTPUT_CONTROL 1		// accumulate PID and output control effort
@@ -48,23 +49,23 @@
 
 // reference filter values for smooth reference transitions
 #define takeoff_d1 1.0f
-#define takeoff_d2 30.0f
+#define takeoff_d2 10.0f
 #define landing_d1 1.0f
-#define landing_d2 0.5f
+#define landing_d2 0.25f
 #define control_d1 1.0f
 #define control_d2 0.25f
 
 // PID gains for throttle edits
-#define kp_th 0.15f//0.15f
-#define ki_th 0.04f//0.04f
-#define kd_th 0.3f//0.2f
+#define kp_th 0.2f//0.15f
+#define ki_th 0.02f//0.04f
+#define kd_th 0.17f//0.2f
 
 #define kp_xy 0.75f//0.15f
 #define ki_xy 0.07f//0.1f
 #define kd_xy 1.5f//0.2f
 
-#define kp_ya 0.05f//0.15f
-#define ki_ya 0.0025f//0.04f
+#define kp_ya 0.07f//0.15f
+#define ki_ya 0.002f//0.04f
 #define kd_ya 0.1f//0.2f
 
 
@@ -87,6 +88,7 @@
 #define ONE_KEY 49
 #define TWO_KEY 50
 #define THREE_KEY 51
+#define FOUR_KEY 52
 
 class Hex{
 	public:
@@ -193,7 +195,7 @@ Hex::Hex(){
 		e_last[i] = 0.0f;
 		ei[i] = 0.0f;
 	}
-	ref[2] = TAKEOFF_HEIGHT;
+	ref[2] = 0.0f;
 
 	RC_MIN[0] = 1096.0f;
 	RC_MIN[1] = 1100.0f;
@@ -277,8 +279,11 @@ void Hex::timer_cb(const ros::TimerEvent& event){
 		case LANDED:
 			data_mode = STANDBY;
 			break;
-		default:
+		case SAFETY_KILL:
 			data_mode = STANDBY;
+			break;
+		default:
+			data_mode = SAFETY_KILL;
 			break;
 	}
 
@@ -297,9 +302,11 @@ void Hex::timer_cb(const ros::TimerEvent& event){
 			rc_out[1] = RC_MIN[1] + (RC_MAX[1] - RC_MIN[1])/2;
 			rc_out[2] = RC_MIN[2];
 			rc_out[3] = RC_MIN[5] + (RC_MAX[5] - RC_MIN[5])/2;
-			//for(int i = 0; i < 5; i++){
-				//rc_out[i] = rc_msg.CHAN_NOCHANGE;
-			//}
+			break;
+		case SAFETY_KILL:
+			for(int i = 0; i < 5; i++){
+				rc_out[i] = rc_msg.CHAN_NOCHANGE;
+			}
 			break;
 		default:
 			break;
@@ -308,7 +315,9 @@ void Hex::timer_cb(const ros::TimerEvent& event){
 	for(int i = 0; i < 5; i++){
 		rc_msg.channels[i] = rc_out[i];
 	}
-	if(rc_out[0] != rc_msg.CHAN_NOCHANGE) rc_pub.publish(rc_msg);
+
+	rc_pub.publish(rc_msg);
+
 	rc0_msg.data = rc_out[0];
 	rc1_msg.data = rc_out[1];
 	rc2_msg.data = rc_out[2];
@@ -362,13 +371,23 @@ void Hex::opti_cb(const geometry_msgs::PoseStampedConstPtr& pos_fb){
 				u[i] = 0.0f;
 			}
 			break;
+		case SAFETY_KILL:
+			for(int i = 0; i < 6; i++){
+				ref[i] = pos[i];
+				e_last[i] = 0.0f;
+				e[i] = 0.0f;
+				ed[i] = 0.0f;
+				ei[i] = 0.0f;
+				u[i] = 0.0f;
+			}
+			break;
 		default:
 			break;
 	}
 }
 
 void Hex::ref_cb(const geometry_msgs::PoseStampedConstPtr& ref_fb){
-	/*double qx = ref_fb -> pose.orientation.x;
+	double qx = ref_fb -> pose.orientation.x;
 	double qy = ref_fb -> pose.orientation.y;
 	double qz = ref_fb -> pose.orientation.z;
 	double qw = ref_fb -> pose.orientation.w;
@@ -378,11 +397,11 @@ void Hex::ref_cb(const geometry_msgs::PoseStampedConstPtr& ref_fb){
 	ref_in[2] = ref_fb -> pose.position.z;
 	ref_in[3] = Hex::Quaternion2Roll(qx,qy,qz,qw);
 	ref_in[4] = Hex::Quaternion2Pitch(qx,qy,qz,qw);
-	ref_in[5] = Hex::Quaternion2Yaw(qx,qy,qz,qw);*/
+	ref_in[5] = Hex::Quaternion2Yaw(qx,qy,qz,qw);
 }
 
 void Hex::mavros_cb(const mavros_msgs::RCInConstPtr& rc_fb){
-	rc0_msg.data = rc_fb -> channels[0];
+	/*rc0_msg.data = rc_fb -> channels[0];
 	rc1_msg.data = rc_fb -> channels[1];
 	rc2_msg.data = rc_fb -> channels[2];
 	rc3_msg.data = rc_fb -> channels[3];
@@ -390,7 +409,7 @@ void Hex::mavros_cb(const mavros_msgs::RCInConstPtr& rc_fb){
 	rc0_pub.publish(rc0_msg);
 	rc1_pub.publish(rc1_msg);
 	rc2_pub.publish(rc2_msg);
-	rc3_pub.publish(rc3_msg);
+	rc3_pub.publish(rc3_msg);*/
 }
 
 double Hex::Quaternion2Roll(double qx, double qy, double qz, double qw){
@@ -433,8 +452,8 @@ void Hex::keydown_cb(const keyboard::KeyConstPtr& keydown){
 
 			ref_msg.pose.orientation.x = 0.0f;
 			ref_msg.pose.orientation.y = 0.0f;
-			ref_msg.pose.orientation.z = 0.5f;
-			ref_msg.pose.orientation.w = sqrt(3.0f)/2;
+			ref_msg.pose.orientation.z = 0.2588f;
+			ref_msg.pose.orientation.w = 0.9659f;
 			ref_pub.publish(ref_msg);
 			break;
 		case W_KEY:
@@ -475,6 +494,9 @@ void Hex::keydown_cb(const keyboard::KeyConstPtr& keydown){
         case THREE_KEY:
 			mode = CONTROLLED;
             break;
+		case FOUR_KEY:
+			mode = SAFETY_KILL;
+	        break;
 	}
 }
 
