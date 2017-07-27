@@ -14,7 +14,8 @@ find_package(catkin REQUIRED COMPONENTS
 	keyboard
 	message_generation
 	serial
-	tf)
+	tf
+	marvelmind_nav)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -113,11 +114,14 @@ add_executable(generate_arm_tf src/generate_arm_tf.cpp)
 add_executable(control_ft_hexa src/ref_contr_ati_ft_sensor.cpp)
 add_executable(optitrack_hex src/generate_hex_ref.cpp)
 add_executable(marvel_opti_calib src/marvel_opti_calib.cpp)
-
+add_executable(marvel_gps_calib src/marvel_gps_calib.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
 # add_dependencies(jl_node jl_generate_messages_cpp)
+
+add_dependencies(marvel_opti_calib ${catkin_EXPORTED_TARGETS})
+add_dependencies(marvel_gps_calib ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(sync_cam_data ${catkin_LIBRARIES})
@@ -125,6 +129,7 @@ target_link_libraries(generate_arm_tf ${catkin_LIBRARIES})
 target_link_libraries(control_ft_hexa ${catkin_LIBRARIES})
 target_link_libraries(optitrack_hex ${catkin_LIBRARIES})
 target_link_libraries(marvel_opti_calib ${catkin_LIBRARIES})
+target_link_libraries(marvel_gps_calib ${catkin_LIBRARIES})
 
 
 #############

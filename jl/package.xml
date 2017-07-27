@@ -73,6 +73,9 @@
   <build_depend>mavros_msgs</build_depend>
   <run_depend>mavros_msgs</run_depend>
 
+  <build_depend>marvelmind_nav</build_depend>
+  <run_depend>marvelmind_nav</run_depend>
+
   <!-- The export tag contains other, unspecified, tags -->
   <export>
     <!-- You can specify that this package is a metapackage here: -->
