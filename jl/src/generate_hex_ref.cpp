@@ -56,17 +56,17 @@
 #define control_d2 0.25f
 
 // PID gains for throttle edits
-#define kp_th 0.2f//0.15f
+#define kp_th 0.5f//0.15f
 #define ki_th 0.02f//0.04f
-#define kd_th 0.17f//0.2f
+#define kd_th 0.15f//0.2f
 
-#define kp_xy 0.75f//0.15f
+#define kp_xy 0.8f//0.15f
 #define ki_xy 0.07f//0.1f
-#define kd_xy 1.5f//0.2f
+#define kd_xy 0.75f//0.2f
 
-#define kp_ya 0.07f//0.15f
-#define ki_ya 0.002f//0.04f
-#define kd_ya 0.1f//0.2f
+#define kp_ya 0.25f//0.15f
+#define ki_ya 0.0005f//0.04f
+#define kd_ya 0.05f//0.2f
 
 
 //////////////////////
@@ -218,7 +218,7 @@ Hex::Hex(){
 	rc_out[0] = RC_MIN[0] + (RC_MAX[0] - RC_MIN[0])/2;
 	rc_out[1] = RC_MIN[1] + (RC_MAX[1] - RC_MIN[1])/2;
 	rc_out[2] = RC_MIN[2];
-	rc_out[3] = RC_MIN[3] + (RC_MAX[3] - RC_MIN[3])/2;
+    rc_out[3] = 1493.0f; //RC_MIN[3] + (RC_MAX[3] - RC_MIN[3])/2;
 	rc_out[4] = RC_MIN[4];
 	rc_out[5] = RC_MIN[5];
 	rc_out[6] = RC_MIN[6];
@@ -295,7 +295,7 @@ void Hex::timer_cb(const ros::TimerEvent& event){
 			rc_out[0] = int(RC_MIN[0] + (RC_MAX[0] - RC_MIN[0]) * (1.0f - u[1] * cos_y - u[0] * sin_y) / 2.0f);
 			rc_out[1] = int(RC_MIN[1] + (RC_MAX[1] - RC_MIN[1]) * (1.0f - u[1] * sin_y + u[0] * cos_y) / 2.0f);
 			rc_out[2] = int(RC_MIN[2] + (RC_MAX[2] - RC_MIN[2]) * (u[2]));
-			rc_out[3] = int(RC_MIN[5] + (RC_MAX[5] - RC_MIN[5]) * (1.0f - u[5]) / 2.0f);
+            rc_out[3] = int(RC_MIN[5] + (RC_MAX[5] - RC_MIN[5]) * (1.0f - u[5]) / 2.0f) - 7;
 			break;
 		case STANDBY:
 			rc_out[0] = RC_MIN[0] + (RC_MAX[0] - RC_MIN[0])/2;
@@ -369,7 +369,8 @@ void Hex::opti_cb(const geometry_msgs::PoseStampedConstPtr& pos_fb){
 				ed[i] = 0.0f;
 				ei[i] = 0.0f;
 				u[i] = 0.0f;
-			}
+            }
+            ref[3] = 0.0f;
 			break;
 		case SAFETY_KILL:
 			for(int i = 0; i < 6; i++){
@@ -380,6 +381,7 @@ void Hex::opti_cb(const geometry_msgs::PoseStampedConstPtr& pos_fb){
 				ei[i] = 0.0f;
 				u[i] = 0.0f;
 			}
+            ref[3] = 0.0f;
 			break;
 		default:
 			break;
