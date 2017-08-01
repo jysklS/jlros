@@ -12,6 +12,7 @@
 #include <mavros_msgs/OverrideRCIn.h>
 #include <mavros_msgs/RCIn.h>
 #include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/TwistStamped.h>
 #include <std_msgs/Float64.h>
 #include <std_msgs/UInt16.h>
 #include <keyboard/Key.h>
@@ -22,7 +23,7 @@
 #define RATE_LOOP 0.025			// timer callback loop rate
 #define TAKEOFF_HEIGHT 1.0f		// Desired Take off height
 #define LANDING_HEIGHT 0.0f		// Desired Landing height
-#define GROUNDED_HEIGHT 0.3f    // Desired Landed Height
+#define GROUNDED_HEIGHT 0.27f   // Desired Landed Height
 #define HOME_X 0.0f				// desired home x
 #define HOME_Y 0.0f				// desired home y
 #define HOME_Z 1.0f				// desired home z
@@ -54,6 +55,8 @@
 #define landing_d2 0.25f
 #define control_d1 1.0f
 #define control_d2 0.25f
+#define RC_GRAV_OFFSET 400.0f
+#define RC_YAW_OFFSET 9.0f
 
 // PID gains for throttle edits
 #define kp_th 0.5f//0.15f
@@ -106,11 +109,13 @@ class Hex{
 
 		ros::Publisher rc_pub;              // Publishes rc override (1000-2000)
 		ros::Publisher ref_pub;             // publish reference pose
+		ros::Publisher u_pub;               // Publishes control effort
+		ros::Publisher R_pub;               // Publishes live references
 
-		ros::Publisher rc0_pub;             // Publishes rc roll (1000-2000)
-		ros::Publisher rc1_pub;             // Publishes rc pitch (1000-2000)
-		ros::Publisher rc2_pub;             // Publishes rc throtte (1000-2000)
-		ros::Publisher rc3_pub;             // Publishes yaw (1000-2000)
+		//ros::Publisher rc0_pub;             // Publishes rc roll (1000-2000)
+		//ros::Publisher rc1_pub;             // Publishes rc pitch (1000-2000)
+		//ros::Publisher rc2_pub;             // Publishes rc throtte (1000-2000)
+		//ros::Publisher rc3_pub;             // Publishes yaw (1000-2000)
 		ros::Publisher debug_pub;           // publish float 64 debug
 
         ros::Timer timer;                   // ROS timer object
@@ -125,11 +130,13 @@ class Hex{
 
 		mavros_msgs::OverrideRCIn rc_msg;	// rc override message
 		geometry_msgs::PoseStamped ref_msg;	// rc override message
+		geometry_msgs::PoseStamped R_msg;	// rc override message
+		geometry_msgs::TwistStamped u_msg;	// rc override message
 
-		std_msgs::UInt16 rc0_msg;			// matlab sucks so i needed to make individual messages for rc control of HIL
-		std_msgs::UInt16 rc1_msg;			// matlab sucks so i needed to make individual messages for rc control of HIL
-		std_msgs::UInt16 rc2_msg;			// matlab sucks so i needed to make individual messages for rc control of HIL
-		std_msgs::UInt16 rc3_msg;			// matlab sucks so i needed to make individual messages for rc control of HIL
+		//std_msgs::UInt16 rc0_msg;			// matlab sucks so i needed to make individual messages for rc control of HIL
+		//std_msgs::UInt16 rc1_msg;			// matlab sucks so i needed to make individual messages for rc control of HIL
+		//std_msgs::UInt16 rc2_msg;			// matlab sucks so i needed to make individual messages for rc control of HIL
+		//std_msgs::UInt16 rc3_msg;			// matlab sucks so i needed to make individual messages for rc control of HIL
 		std_msgs::Float64 debug_msg;		// debug float 64
 
 		double pos[6];						// current position according to optitrack
@@ -181,10 +188,12 @@ Hex::Hex(){
 
 	rc_pub = nh.advertise<mavros_msgs::OverrideRCIn>("/mavros/rc/override", 1);
 	ref_pub = nh.advertise<geometry_msgs::PoseStamped>("/hex_ref", 1);
-	rc0_pub = nh.advertise<std_msgs::UInt16>("/matlabsucks/rc0", 1);
-	rc1_pub = nh.advertise<std_msgs::UInt16>("/matlabsucks/rc1", 1);
-	rc2_pub = nh.advertise<std_msgs::UInt16>("/matlabsucks/rc2", 1);
-	rc3_pub = nh.advertise<std_msgs::UInt16>("/matlabsucks/rc3", 1);
+	R_pub = nh.advertise<geometry_msgs::PoseStamped>("/ref_stream", 1);
+	u_pub = nh.advertise<geometry_msgs::TwistStamped>("/control_stream", 1);
+	//rc0_pub = nh.advertise<std_msgs::UInt16>("/matlabsucks/rc0", 1);
+	//rc1_pub = nh.advertise<std_msgs::UInt16>("/matlabsucks/rc1", 1);
+	//rc2_pub = nh.advertise<std_msgs::UInt16>("/matlabsucks/rc2", 1);
+	//rc3_pub = nh.advertise<std_msgs::UInt16>("/matlabsucks/rc3", 1);
 	debug_pub = nh.advertise<std_msgs::Float64>("/float_debug", 1);
 
 	for(int i = 0; i < 6; i++){
@@ -195,7 +204,7 @@ Hex::Hex(){
 		e_last[i] = 0.0f;
 		ei[i] = 0.0f;
 	}
-	ref[2] = 0.0f;
+	ref_in[2] = TAKEOFF_HEIGHT;
 
 	RC_MIN[0] = 1096.0f;
 	RC_MIN[1] = 1100.0f;
@@ -218,7 +227,7 @@ Hex::Hex(){
 	rc_out[0] = RC_MIN[0] + (RC_MAX[0] - RC_MIN[0])/2;
 	rc_out[1] = RC_MIN[1] + (RC_MAX[1] - RC_MIN[1])/2;
 	rc_out[2] = RC_MIN[2];
-    rc_out[3] = 1493.0f; //RC_MIN[3] + (RC_MAX[3] - RC_MIN[3])/2;
+    rc_out[3] = RC_MIN[3] + (RC_MAX[3] - RC_MIN[3])/2;
 	rc_out[4] = RC_MIN[4];
 	rc_out[5] = RC_MIN[5];
 	rc_out[6] = RC_MIN[6];
@@ -294,30 +303,45 @@ void Hex::timer_cb(const ros::TimerEvent& event){
 		case OUTPUT_CONTROL:
 			rc_out[0] = int(RC_MIN[0] + (RC_MAX[0] - RC_MIN[0]) * (1.0f - u[1] * cos_y - u[0] * sin_y) / 2.0f);
 			rc_out[1] = int(RC_MIN[1] + (RC_MAX[1] - RC_MIN[1]) * (1.0f - u[1] * sin_y + u[0] * cos_y) / 2.0f);
-			rc_out[2] = int(RC_MIN[2] + (RC_MAX[2] - RC_MIN[2]) * (u[2]));
-            rc_out[3] = int(RC_MIN[5] + (RC_MAX[5] - RC_MIN[5]) * (1.0f - u[5]) / 2.0f) - 7;
+			rc_out[2] = int(RC_MIN[2] + RC_GRAV_OFFSET + (RC_MAX[2] - RC_MIN[2]) * u[2]);
+            rc_out[3] = int(RC_MIN[5] + (RC_MAX[5] - RC_MIN[5]) * (1.0f - u[5]) / 2.0f - RC_YAW_OFFSET);
 			break;
 		case STANDBY:
 			rc_out[0] = RC_MIN[0] + (RC_MAX[0] - RC_MIN[0])/2;
 			rc_out[1] = RC_MIN[1] + (RC_MAX[1] - RC_MIN[1])/2;
 			rc_out[2] = RC_MIN[2];
-			rc_out[3] = RC_MIN[5] + (RC_MAX[5] - RC_MIN[5])/2;
+			rc_out[3] = RC_MIN[5] + (RC_MAX[5] - RC_MIN[5])/2 - RC_YAW_OFFSET;
 			break;
 		case SAFETY_KILL:
-			for(int i = 0; i < 5; i++){
-				rc_out[i] = rc_msg.CHAN_NOCHANGE;
-			}
 			break;
 		default:
 			break;
 	}
 
+	u_msg.twist.linear.x = u[0];
+	u_msg.twist.linear.y = u[1];
+	u_msg.twist.linear.z = u[2];
+	u_msg.twist.angular.x = u[3];
+	u_msg.twist.angular.y = u[4];
+	u_msg.twist.angular.z = u[5];
+	R_msg.pose.position.x = ref[0];
+	R_msg.pose.position.y = ref[1];
+	R_msg.pose.position.z = ref[2];
+	R_msg.pose.orientation.x = 0.0f;
+	R_msg.pose.orientation.y = 0.0f;
+	R_msg.pose.orientation.z = sin(ref[5]/2.0f);
+	R_msg.pose.orientation.w = cos(ref[5]/2.0f);
+
 	for(int i = 0; i < 5; i++){
+		if(rc_out[i] > RC_MAX[i]) rc_out[i] = RC_MAX[i];
+		if(rc_out[i] < RC_MIN[i]) rc_out[i] = RC_MIN[i];
 		rc_msg.channels[i] = rc_out[i];
 	}
 
 	rc_pub.publish(rc_msg);
-
+	u_pub.publish(u_msg);
+	R_pub.publish(R_msg);
+/*
 	rc0_msg.data = rc_out[0];
 	rc1_msg.data = rc_out[1];
 	rc2_msg.data = rc_out[2];
@@ -326,7 +350,7 @@ void Hex::timer_cb(const ros::TimerEvent& event){
 	rc1_pub.publish(rc1_msg);
 	rc2_pub.publish(rc2_msg);
 	rc3_pub.publish(rc3_msg);
-
+*/
 	//debug_msg.data = ref_in[5];
 	//debug_pub.publish(debug_msg);
 }
@@ -437,15 +461,16 @@ void Hex::keydown_cb(const keyboard::KeyConstPtr& keydown){
 	int x = keydown -> code;
 	switch(x){
 		case Q_KEY:
-			ref_msg.pose.position.x = 0.0f;
-			ref_msg.pose.position.y = 0.0f;
-			ref_msg.pose.position.z = 1.0f;
+			ref_msg.pose.position.x = HOME_X;
+			ref_msg.pose.position.y = HOME_Y;
+			ref_msg.pose.position.z = HOME_Z;
 
 			ref_msg.pose.orientation.x = 0.0f;
 			ref_msg.pose.orientation.y = 0.0f;
 			ref_msg.pose.orientation.z = 0.0f;
 			ref_msg.pose.orientation.w = 1.0f;
 			ref_pub.publish(ref_msg);
+			ROS_INFO_STREAM("Send to HOME Control");
 			break;
 		case A_KEY:
 			ref_msg.pose.position.x = 0.5f;
@@ -457,12 +482,15 @@ void Hex::keydown_cb(const keyboard::KeyConstPtr& keydown){
 			ref_msg.pose.orientation.z = 0.2588f;
 			ref_msg.pose.orientation.w = 0.9659f;
 			ref_pub.publish(ref_msg);
+			ROS_INFO_STREAM("Send to LOC1 Control");
 			break;
 		case W_KEY:
 			rc_out[4] = RC_MIN[4];
+			ROS_INFO_STREAM("Hex is now in STABILIZE mode");
 			break;
 		case S_KEY:
 			rc_out[4] = RC_MAX[4];
+			ROS_INFO_STREAM("Hex is now in FULLY_ACT mode");
 			break;
 		case E_KEY:
 			mode_arm = ARMING;
