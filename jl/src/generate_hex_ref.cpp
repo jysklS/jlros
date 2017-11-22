@@ -55,21 +55,21 @@
 #define landing_d2 0.25f
 #define control_d1 1.0f
 #define control_d2 0.25f
-#define RC_GRAV_OFFSET 400.0f
+#define RC_GRAV_OFFSET 0.0f
 #define RC_YAW_OFFSET 9.0f
 
 // PID gains for throttle edits
 #define kp_th 0.5f//0.15f
-#define ki_th 0.02f//0.04f
-#define kd_th 0.15f//0.2f
+#define ki_th 0.1f//0.04f
+#define kd_th 0.1f//0.2f
 
 #define kp_xy 0.8f//0.15f
 #define ki_xy 0.07f//0.1f
-#define kd_xy 0.75f//0.2f
+#define kd_xy 1.2f//0.2f
 
 #define kp_ya 0.25f//0.15f
-#define ki_ya 0.0005f//0.04f
-#define kd_ya 0.05f//0.2f
+#define ki_ya 0.03f//0.04f
+#define kd_ya 0.01f//0.2f
 
 
 //////////////////////
@@ -228,7 +228,7 @@ Hex::Hex(){
 	rc_out[1] = RC_MIN[1] + (RC_MAX[1] - RC_MIN[1])/2;
 	rc_out[2] = RC_MIN[2];
     rc_out[3] = RC_MIN[3] + (RC_MAX[3] - RC_MIN[3])/2;
-	rc_out[4] = RC_MIN[4];
+    rc_out[4] = RC_MAX[4];
 	rc_out[5] = RC_MIN[5];
 	rc_out[6] = RC_MIN[6];
 	rc_out[7] = RC_MIN[7];
@@ -280,7 +280,7 @@ void Hex::timer_cb(const ros::TimerEvent& event){
 			}
 			break;
 		case LANDING:
-			if(ref[2] < GROUNDED_HEIGHT) data_mode = STANDBY;
+            if(ref[2] < GROUNDED_HEIGHT) data_mode =+ STANDBY;
 			else data_mode = OUTPUT_CONTROL;
 			ref_m1[2] = ref[2];
 			ref[2] = (landing_d1/(landing_d1 + landing_d2*ref_dt))*ref_m1[2] + (landing_d1*landing_d2*ref_dt/(landing_d1 + landing_d2*ref_dt))*(LANDING_HEIGHT);
@@ -301,8 +301,8 @@ void Hex::timer_cb(const ros::TimerEvent& event){
 
 	switch(data_mode){
 		case OUTPUT_CONTROL:
-			rc_out[0] = int(RC_MIN[0] + (RC_MAX[0] - RC_MIN[0]) * (1.0f - u[1] * cos_y - u[0] * sin_y) / 2.0f);
-			rc_out[1] = int(RC_MIN[1] + (RC_MAX[1] - RC_MIN[1]) * (1.0f - u[1] * sin_y + u[0] * cos_y) / 2.0f);
+            rc_out[0] = int(RC_MIN[0] + (RC_MAX[0] - RC_MIN[0]) * (1.0f - u[1] * cos_y - u[0] * sin_y) / 2.0f);
+            rc_out[1] = int(RC_MIN[1] + (RC_MAX[1] - RC_MIN[1]) * (1.0f + u[1] * sin_y - u[0] * cos_y) / 2.0f);
 			rc_out[2] = int(RC_MIN[2] + RC_GRAV_OFFSET + (RC_MAX[2] - RC_MIN[2]) * u[2]);
             rc_out[3] = int(RC_MIN[5] + (RC_MAX[5] - RC_MIN[5]) * (1.0f - u[5]) / 2.0f - RC_YAW_OFFSET);
 			break;
@@ -334,7 +334,7 @@ void Hex::timer_cb(const ros::TimerEvent& event){
 
 	for(int i = 0; i < 5; i++){
 		if(rc_out[i] > RC_MAX[i]) rc_out[i] = RC_MAX[i];
-		if(rc_out[i] < RC_MIN[i]) rc_out[i] = RC_MIN[i];
+        if(rc_out[i] < RC_MIN[i]) rc_out[i] = RC_MIN[i];
 		rc_msg.channels[i] = rc_out[i];
 	}
 
@@ -461,9 +461,9 @@ void Hex::keydown_cb(const keyboard::KeyConstPtr& keydown){
 	int x = keydown -> code;
 	switch(x){
 		case Q_KEY:
-			ref_msg.pose.position.x = HOME_X;
-			ref_msg.pose.position.y = HOME_Y;
-			ref_msg.pose.position.z = HOME_Z;
+            ref_msg.pose.position.x = 0.0f;
+            ref_msg.pose.position.y = 0.0f;
+            ref_msg.pose.position.z = 1.0f;
 
 			ref_msg.pose.orientation.x = 0.0f;
 			ref_msg.pose.orientation.y = 0.0f;
@@ -473,14 +473,14 @@ void Hex::keydown_cb(const keyboard::KeyConstPtr& keydown){
 			ROS_INFO_STREAM("Send to HOME Control");
 			break;
 		case A_KEY:
-			ref_msg.pose.position.x = 0.5f;
-			ref_msg.pose.position.y = 0.25f;
+            ref_msg.pose.position.x = 0.0f;
+            ref_msg.pose.position.y = -0.4f;
 			ref_msg.pose.position.z = 1.0f;
 
 			ref_msg.pose.orientation.x = 0.0f;
 			ref_msg.pose.orientation.y = 0.0f;
-			ref_msg.pose.orientation.z = 0.2588f;
-			ref_msg.pose.orientation.w = 0.9659f;
+            ref_msg.pose.orientation.z = 0.0f;
+            ref_msg.pose.orientation.w = 1.0f;
 			ref_pub.publish(ref_msg);
 			ROS_INFO_STREAM("Send to LOC1 Control");
 			break;
